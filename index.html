@@ -19,19 +19,12 @@
             -webkit-touch-callout: none;
         }
 
-        html, body {
-            touch-action: manipulation;
-            overflow: hidden;
-            height: 100%;
-        }
-
         body {
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #f0f0f0;
             height: 100vh;
             overflow: hidden;
-            position: fixed;
-            width: 100%;
+            touch-action: pan-x pan-y;
         }
 
         .header {
@@ -666,46 +659,6 @@
             text-align: center;
         }
 
-        .load-more-container {
-            display: none;
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 20px;
-            opacity: 0;
-            animation: fadeIn 0.5s ease forwards;
-        }
-
-        .load-more-btn {
-            background: linear-gradient(145deg, #e50914, #b00710);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
-        }
-
-        .load-more-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
-        }
-
-        .load-more-btn:active {
-            transform: translateY(0);
-        }
-
-        .load-more-btn.hiding {
-            animation: hideButton 0.5s ease forwards;
-        }
-
-        @keyframes hideButton {
-            from { opacity: 1; transform: scale(1); }
-            to { opacity: 0; transform: scale(0.8); }
-        }
-
         @media (min-width: 768px) {
             .cards-container, .saved-cards-container {
                 grid-template-columns: repeat(3, 1fr);
@@ -760,10 +713,6 @@
                     </div>
                 </div>
             </template>
-        </div>
-        
-        <div id="loadMoreContainer" class="load-more-container">
-            <button id="loadMoreBtn" class="load-more-btn">Load More</button>
         </div>
         
         <div id="noEntertainers" class="no-entertainers">
@@ -842,8 +791,30 @@
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
+        document.addEventListener('touchstart', function(event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(event) {
+            event.preventDefault();
+        });
+
+        document.addEventListener('gesturechange', function(event) {
+            event.preventDefault();
+        });
+
+        document.addEventListener('gestureend', function(event) {
+            event.preventDefault();
+        });
+
+        document.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+        });
+
         const entertainers = [
-              {
+            {
     id: 1,
     name: "Sonirajpoot1",
     thumbnail: "https://img.doppiocdn.com/thumbs/${timestamp}/196503633",
@@ -4445,12 +4416,11 @@
   }
         ];
 
-        const BATCH_SIZE = 200;
-        const BATCH_CHECK_TIME = 5000;
+        const BATCH_SIZE = 100;
+        const BATCH_CHECK_TIME = 2500;
         const RECHECK_INTERVAL = 60000;
         const THUMBNAIL_RETRY_DELAY = 2000;
         const MAX_THUMBNAIL_RETRIES = 3;
-        const CARDS_PER_PAGE = 18;
 
         const cardsContainer = document.getElementById('cardsContainer');
         const loadingElement = document.getElementById('loading');
@@ -4471,8 +4441,6 @@
         const savedCardsContainer = document.getElementById('savedCardsContainer');
         const noSavedEntertainersElement = document.getElementById('noSavedEntertainers');
         const multiModalLoading = document.getElementById('multiModalLoading');
-        const loadMoreContainer = document.getElementById('loadMoreContainer');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
 
         let currentTimestamp = Math.floor(Date.now() / 1000);
         let activeEntertainers = new Map();
@@ -4480,28 +4448,6 @@
         let thumbnailRetryCounts = new Map();
         let savedEntertainers = JSON.parse(localStorage.getItem('savedEntertainers')) || [];
         let currentModalEntertainer = null;
-        let currentPage = 0;
-        let displayedCards = 0;
-        let isInitialLoad = true;
-
-        // Disable zoom and text selection
-        document.addEventListener('gesturestart', function(e) {
-            e.preventDefault();
-        });
-        
-        document.addEventListener('dblclick', function(e) {
-            e.preventDefault();
-        });
-        
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        });
-        
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
 
         function initSavedEntertainers() {
             updateSavedCardsDisplay();
@@ -4638,7 +4584,7 @@
             
             thumbnail.onerror = function() {
                 card.classList.add('thumbnail-fallback');
-                title.textContent = entertainer.name + '';
+                title.textContent = entertainer.name + ' ';
             };
             
             if (isActive) {
@@ -4742,7 +4688,7 @@
                 thumbnail.alt = entertainer.name;
                 thumbnail.parentElement.classList.add('thumbnail-fallback');
                 const title = thumbnail.parentElement.querySelector('.entertainer-name');
-                title.textContent = entertainer.name + ' (No Thumbnail)';
+                title.textContent = entertainer.name + ' ';
                 return;
             }
             
@@ -4899,6 +4845,7 @@
         closeModalBtn.addEventListener('click', closePlayerModal);
 
         playerModal.addEventListener('click', (e) => {
+            // Keep existing functionality
         });
 
         async function checkEntertainer(entertainer) {
@@ -4935,34 +4882,6 @@
             });
         }
 
-        function showMoreCards() {
-            const allActive = Array.from(activeEntertainers.values());
-            const startIndex = displayedCards;
-            const endIndex = Math.min(displayedCards + CARDS_PER_PAGE, allActive.length);
-            
-            for (let i = startIndex; i < endIndex; i++) {
-                const { card } = allActive[i];
-                if (!card.parentElement) {
-                    cardsContainer.appendChild(card);
-                }
-                displayedCards++;
-            }
-            
-            if (displayedCards < allActive.length) {
-                loadMoreContainer.style.display = 'block';
-            } else {
-                loadMoreBtn.classList.add('hiding');
-                setTimeout(() => {
-                    loadMoreContainer.style.display = 'none';
-                    loadMoreBtn.classList.remove('hiding');
-                }, 500);
-            }
-            
-            activeCountElement.textContent = allActive.length;
-        }
-
-        loadMoreBtn.addEventListener('click', showMoreCards);
-
         async function checkEntertainersRandomly(entertainers, isBackgroundCheck = false) {
             const shuffledEntertainers = shuffleArray([...entertainers]);
             const batches = [];
@@ -4971,12 +4890,10 @@
             }
 
             let activeEntertainersCount = 0;
-            let newCardsAdded = false;
             
             if (!isBackgroundCheck) {
                 cardsContainer.style.display = 'none';
                 loadingElement.style.display = 'flex';
-                loadMoreContainer.style.display = 'none';
             }
             
             for (let i = 0; i < batches.length; i++) {
@@ -4988,32 +4905,25 @@
                     if (isActive) {
                         if (!activeEntertainers.has(entertainer.id)) {
                             const card = createCard(entertainer);
+                            cardsContainer.appendChild(card);
                             activeEntertainers.set(entertainer.id, {entertainer, card});
                             activeEntertainersCount++;
-                            newCardsAdded = true;
                         }
                     } else {
                         if (activeEntertainers.has(entertainer.id)) {
                             const {card} = activeEntertainers.get(entertainer.id);
-                            if (card.parentElement) {
-                                card.remove();
-                            }
+                            card.remove();
                             activeEntertainers.delete(entertainer.id);
                             thumbnailRetryCounts.delete(entertainer.id);
                         }
                     }
                 });
                 
-                if (!isBackgroundCheck && activeEntertainers.size > 0) {
+                activeCountElement.textContent = activeEntertainers.size;
+                
+                if (i === 0 && activeEntertainers.size > 0 && !isBackgroundCheck) {
                     loadingElement.style.display = 'none';
                     cardsContainer.style.display = 'grid';
-                    
-                    if (isInitialLoad || newCardsAdded) {
-                        currentPage = 0;
-                        displayedCards = 0;
-                        showMoreCards();
-                        isInitialLoad = false;
-                    }
                 }
                 
                 if (i < batches.length - 1) {
@@ -5026,45 +4936,16 @@
                 
                 if (activeEntertainers.size === 0) {
                     noEntertainersElement.style.display = 'flex';
-                    cardsContainer.style.display = 'none';
-                    loadMoreContainer.style.display = 'none';
                 } else {
                     cardsContainer.style.display = 'grid';
-                    
-                    if (isInitialLoad) {
-                        currentPage = 0;
-                        displayedCards = 0;
-                        showMoreCards();
-                        isInitialLoad = false;
-                    }
                 }
             } else {
                 if (activeEntertainers.size === 0) {
                     noEntertainersElement.style.display = 'flex';
                     cardsContainer.style.display = 'none';
-                    loadMoreContainer.style.display = 'none';
                 } else {
                     noEntertainersElement.style.display = 'none';
                     cardsContainer.style.display = 'grid';
-                    
-                    if (newCardsAdded) {
-                        const allActive = Array.from(activeEntertainers.values());
-                        const newCards = allActive.filter(({card}) => !card.parentElement);
-                        
-                        newCards.forEach(({card}) => {
-                            cardsContainer.appendChild(card);
-                        });
-                        
-                        if (displayedCards >= allActive.length) {
-                            loadMoreBtn.classList.add('hiding');
-                            setTimeout(() => {
-                                loadMoreContainer.style.display = 'none';
-                                loadMoreBtn.classList.remove('hiding');
-                            }, 500);
-                        } else {
-                            loadMoreContainer.style.display = 'block';
-                        }
-                    }
                 }
             }
         }
@@ -5095,4 +4976,3 @@
     </script>
 </body>
 </html>
-
